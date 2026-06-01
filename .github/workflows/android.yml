@@ -12,21 +12,12 @@ jobs:
     - name: Descargar el código del repositorio
       uses: actions/checkout@v4
 
-    - name: Configurar entorno de Python
-      uses: actions/setup-python@v5
+    #Usamos el contenedor oficial aislado para evitar los problemas de macros en Ubuntu 24
+    - name: Compilar APK con Buildozer Action
+      uses: ArtemGovorov/buildozer-action@v1
       with:
-        python-version: '3.11'
-
-    - name: Instalar dependencias del sistema Linux y Buildozer
-      run: |
-        sudo apt-get update
-        #AGREGAMOS LIBTOOL, AUTOMAKE Y AUTOCONF EXPLICITAMENTE PARA FIJAR EL ERROR DE LIBFFI
-        sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev tk-dev libgdbm-compat-dev liblzma-dev lzma m4
-        pip install --user --upgrade buildozer
-
-    - name: Compilar APK con Buildozer
-      run: |
-        yes | buildozer android debug
+        command: buildozer android debug
+        repository_root: .
 
     - name: Guardar y subir el APK como resultado
       uses: actions/upload-artifact@v4
