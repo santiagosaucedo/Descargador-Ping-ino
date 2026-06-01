@@ -17,8 +17,9 @@ source.include_exts = py,png,jpg,kv,atlas,html,js,css,ico,webmanifest
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Requerimientos de librerías de Python necesarios para correr el servidor
-requirements = python3,flask,yt-dlp
+# (list) Application requirements
+#Forzamos la versión 3.11 estable para que Flask y yt-dlp compilen sin errores nativos
+requirements = python3==3.11.11,flask,yt-dlp
 
 # (str) Ícono para el celular (Usamos el de alta definición que está adentro de frontend)
 icon.filename = %(source.dir)s/../frontend/android-chrome-512x512.png
