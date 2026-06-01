@@ -26,8 +26,8 @@ icon.filename = %(source.dir)s/../frontend/android-chrome-512x512.png
 # (list) Permisos de Android necesarios (Descarga de Internet y Guardado en Almacenamiento)
 android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 
-# (int) Orientación de la pantalla (1 = Portada/Vertical, 2 = Paisaje/Horizontal)
-orientation = 2
+# (str) Supported orientation (one of landscape, portrait or all)
+orientation = landscape
 
 # (bool) Indicar si la aplicación corre a pantalla completa (oculta barras del sistema)
 fullscreen = 1

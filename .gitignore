@@ -15,7 +15,7 @@ dist/
 build/
 main.spec
 *.manifest
-*.spec
+
 
 # 🛠️ BINARIOS PESADOS DE WINDOWS (DEJAR AFUERA)
 motor-desktop-pc/bin/
