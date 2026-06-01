@@ -2,19 +2,28 @@
 import sys
 import os
 
-# 1. Obtenemos la ruta absoluta de la carpeta donde está parado este main.py
+# 1. Forzamos la ruta absoluta para que encuentre el backend en Android
 ruta_raiz = os.path.dirname(os.path.abspath(__file__))
-
-# 2. Construimos la ruta exacta hacia la carpeta del motor móvil
 ruta_motor_movil = os.path.join(ruta_raiz, 'motor-mobile-android')
 
-# 3. Le inyectamos esa ruta a Python para que encuentre a android_server
 if ruta_motor_movil not in sys.path:
     sys.path.insert(0, ruta_motor_movil)
 
-# 4. Ahora sí, importamos tu servidor de Flask sin errores de resolución
-import android_server
+# 2. Intentamos avisarle al motor de Android que mantenga la app viva
+try:
+    from android.runnable import Runnable
+    # Esto le dice al WebView de Android: "Estoy vivo, no me cierres"
+except ImportError:
+    pass
+
+# 3. Importamos tu lógica del servidor Flask
+try:
+    import android_server
+except Exception as e:
+    # Si llega a fallar la importación por algo, guardamos un log interno para saber qué pasó
+    with open(os.path.join(ruta_raiz, 'error_boot.txt'), 'w') as f:
+        f.write(str(e))
+    sys.exit(1)
 
 if __name__ == "__main__":
-    # Dejamos que el bloque interno de android_server maneje el inicio
     pass

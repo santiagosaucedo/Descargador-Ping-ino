@@ -90,7 +90,6 @@ def api_convertir_bytes():
             os.remove(ruta_temporal_video)
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-if __name__ == "__main__":
-    print("Servidor móvil simulado listo en : http://127.0.0.1:5000")
-    app.run(host='127.0.0.1', port=5000, debug=False)
+if __name__ == '__main__':
+    # 🚨 CLAVE EN CELULARES: Host en 0.0.0.0 y un puerto alto (como el 5000 o 8080)
+    app.run(host='0.0.0.0', port=5000, debug=False)
