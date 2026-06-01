@@ -1,0 +1,25 @@
+# Entornos virtuales locales
+.venv/
+venv/
+ENV/
+
+# Temporales y cachés de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+#DISTRIBUCIÓN DE PC (DEJAR AFUERA DEL REPO)
+dist/
+build/
+main.spec
+*.manifest
+*.spec
+
+# 🛠️ BINARIOS PESADOS DE WINDOWS (DEJAR AFUERA)
+motor-desktop-pc/bin/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db

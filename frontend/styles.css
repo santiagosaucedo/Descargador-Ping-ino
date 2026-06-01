@@ -1,0 +1,60 @@
+body {
+    background-color: #121212;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+}
+
+.app-container {
+    position: relative;
+    width: 830px;
+    height: 500px;
+}
+
+canvas {
+    border: 1px solid #333;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+#urlInput {
+    position: absolute;
+    left: 285px;
+    top: 340px;
+    width: 460px;
+    height: 50px;
+    z-index: 2;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #EAEAEA;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 0 20px;
+    display: block;
+}
+
+#urlInput::placeholder {
+    color: #555555;
+    font-family: sans-serif;
+    font-style: italic;
+}
+
+/* Capa invisible interactiva para Drag & Drop y Selección en la pestaña MP3 */
+#fileInput {
+    position: absolute;
+    left: 265px;   /* Mismo centrado de la caja grande */
+    top: 60px;     /* Y inicial de la zona */
+    width: 500px;  /* Ancho idéntico al del rectángulo */
+    height: 240px; /* Alto idéntico al del rectángulo */
+    z-index: 2;
+    opacity: 0;    /* Lo hacemos 100% invisible para que se vea el Canvas de fondo */
+    cursor: pointer;
+    display: none; /* Se controla dinámicamente desde JS */
+}
