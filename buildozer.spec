@@ -21,14 +21,23 @@ source.include_patterns = motor-mobile-android/*, frontend/*
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Application requirements (Versión fija y emparejada de Python)
-requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp
+# (list) Application requirements (Agregado pyjnius al final para el puente gráfico)
+requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,pyjnius
 
-# (str) Ícono para el celular (Corregida la ruta ya que source.dir ya es la raíz)
+# (str) Ícono para el celular
 icon.filename = frontend/android-chrome-512x512.png
 
-# (list) Permisos de Android necesarios
-android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
+# (list) Permisos de Android necesarios (Dejamos solo INTERNET para el testeo inicial limpio)
+android.permissions = INTERNET
+
+# (int) Target Android API (Versión estable apuntando a Android 13)
+android.api = 33
+
+# (int) Minimum API required (Android 7.0 en adelante)
+android.minapi = 24
+
+# (int) Android NDK API to use
+android.ndk_api = 24
 
 # (str) Orientación fija en horizontal
 orientation = landscape
@@ -39,5 +48,5 @@ fullscreen = 1
 # (list) Arquitectura estándar moderna
 android.archs = arm64-v8a
 
-# (str) Punto de entrada oficial (Aprieta el gatillo del main.py que creamos)
+# (str) Punto de entrada oficial
 android.entrypoint = main.py
