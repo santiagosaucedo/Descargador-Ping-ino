@@ -1,4 +1,5 @@
 [app]
+
 # (str) Título de tu aplicación en el menú del celular
 title = Descargador Pinguino
 
@@ -8,33 +9,35 @@ package.name = descargadorpinguino
 # (str) Dominio de organización para el ID interno
 package.domain = org.santiago
 
-# (str) Directorio donde se encuentra el código fuente de Android
-source.dir = motor-mobile-android
+# (str) Directorio raíz (Leemos desde la raíz para unificar frontend y backend)
+source.dir = .
 
-# (list) Extensiones de archivos que se van a incluir en el APK
+# (list) Extensiones de archivos válidas
 source.include_exts = py,png,jpg,kv,atlas,html,js,css,ico,webmanifest
+
+# (list) FILTRO CRÍTICO: Incluimos solo las carpetas de la app y dejamos afuera .venv y .git
+source.include_patterns = motor-mobile-android/*, frontend/*
 
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Application requirements
-# 🐧 Seteamos la misma versión exacta para el celular y para el compilador de Linux
+# (list) Application requirements (Versión fija y emparejada de Python)
 requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp
 
-# (str) Ícono para el celular (Usamos el de alta definición que está adentro de frontend)
-icon.filename = %(source.dir)s/../frontend/android-chrome-512x512.png
+# (str) Ícono para el celular (Corregida la ruta ya que source.dir ya es la raíz)
+icon.filename = frontend/android-chrome-512x512.png
 
-# (list) Permisos de Android necesarios (Descarga de Internet y Guardado en Almacenamiento)
+# (list) Permisos de Android necesarios
 android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 
-# (str) Supported orientation (one of landscape, portrait or all)
+# (str) Orientación fija en horizontal
 orientation = landscape
 
-# (bool) Indicar si la aplicación corre a pantalla completa (oculta barras del sistema)
+# (bool) Pantalla completa sin barras de estado
 fullscreen = 1
 
-# (list) Arquitecturas de procesadores de celular a compilar (Arm64 es el estándar actual)
+# (list) Arquitectura estándar moderna
 android.archs = arm64-v8a
 
-# (str) Indicarle a Buildozer que empaquete un WebView para renderizar tu Canvas HTML5
+# (str) Punto de entrada oficial (Aprieta el gatillo del main.py que creamos)
 android.entrypoint = main.py
