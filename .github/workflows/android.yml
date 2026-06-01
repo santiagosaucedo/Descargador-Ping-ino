@@ -12,9 +12,9 @@ jobs:
     - name: Descargar el código del repositorio
       uses: actions/checkout@v4
 
-    #Usamos el contenedor oficial aislado para evitar los problemas de macros en Ubuntu 24
+    #Usamos la ruta real y actualizada del contenedor oficial de Buildozer
     - name: Compilar APK con Buildozer Action
-      uses: ArtemGovorov/buildozer-action@v1
+      uses: subzero-io/buildozer-action@v1
       with:
         command: buildozer android debug
         repository_root: .
