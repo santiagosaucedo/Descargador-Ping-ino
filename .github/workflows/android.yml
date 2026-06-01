@@ -6,18 +6,27 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    #CLAVE: Forzamos Ubuntu 22.04 para evitar que se rompan las macros de libffi
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Descargar el código del repositorio
       uses: actions/checkout@v4
 
-    #Usamos la ruta real y actualizada del contenedor oficial de Buildozer
-    - name: Compilar APK con Buildozer Action
-      uses: subzero-io/buildozer-action@v1
+    - name: Configurar entorno de Python
+      uses: actions/setup-python@v5
       with:
-        command: buildozer android debug
-        repository_root: .
+        python-version: '3.11'
+
+    - name: Instalar dependencias del sistema Linux y Buildozer
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev tk-dev libgdbm-compat-dev liblzma-dev lzma
+        pip install --user --upgrade buildozer
+
+    - name: Compilar APK con Buildozer
+      run: |
+        yes | buildozer android debug
 
     - name: Guardar y subir el APK como resultado
       uses: actions/upload-artifact@v4
