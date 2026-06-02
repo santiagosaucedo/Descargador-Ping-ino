@@ -3,35 +3,24 @@ import binascii
 import subprocess
 from flask import Flask, request, jsonify, send_from_directory
 
-# --- MANEJO DINÁMICO DE RUTAS BASADO EN TU ÁRBOL DE DIRECTORIOS ---
 RUTA_BASE_MOBILE = os.path.dirname(os.path.abspath(__file__))
 RAIZ_PROYECTO = os.path.dirname(RUTA_BASE_MOBILE)
 CARPETA_FRONTEND = os.path.join(RAIZ_PROYECTO, "frontend")
-
-# 🐧 DETECCIÓN DE ENTORNO: Ajustamos rutas y ejecutables según sea Android o PC Windows
 ES_ANDROID = 'ANDROID_ARGUMENT' in os.environ
 
 if ES_ANDROID:
-    # En Android usamos las variables inyectadas por el main.py y el FFmpeg nativo del sistema
-    RUTA_DESCARGAS_FINAL = os.environ.get('RUTA_DESCARGAS_PINGUINO', '/sdcard/Download')
-    executable_ffmpeg = "ffmpeg"  # Linux / Android lo lee directo del PATH global si la receta existe
+    RUTA_DESCARGAS_FINAL = os.environ.get('RUTA_DESCARGAS_PINGUINO', '/storage/emulated/0/Download')
+    executable_ffmpeg = "ffmpeg"
 else:
-    # Mantenemos tus rutas originales para cuando pruebes en tu PC de escritorio
     FFMPEG_PATH = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin")
     executable_ffmpeg = os.path.join(FFMPEG_PATH, "ffmpeg.exe")
     RUTA_DESCARGAS_FINAL = os.path.join(os.path.expanduser("~"), "Downloads")
 
-# Aseguramos que la carpeta de descargas exista
-os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
-
-# Inicializamos Flask apuntando exactamente a la carpeta externa /frontend
 app = Flask(__name__, static_folder=CARPETA_FRONTEND, static_url_path='')
-
 
 @app.route('/')
 def servir_interfaz():
     return send_from_directory(app.static_folder, 'index.html')
-
 
 @app.route('/api/descargar_video', methods=['POST'])
 def api_descargar_video():
@@ -41,17 +30,22 @@ def api_descargar_video():
     if not url_video or ("youtube.com" not in url_video and "youtu.be" not in url_video):
         return jsonify({"status": "error", "message": "Enlace inválido."}), 400
 
+    # 🚨 LA CREACIÓN DE CARPETA SE HACE RECIÉN ACÁ
+    try:
+        os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Fallo de permisos de escritura: {e}"}), 500
+
     url_limpia = url_video.strip().split()[0]
 
     from yt_dlp import YoutubeDL
     ydl_opts = {
-        "format": "best[ext=mp4]/best",  # Mantiene tu descarga de video original
+        "format": "best[ext=mp4]/best",
         "outtmpl": os.path.join(RUTA_DESCARGAS_FINAL, "%(title)s.%(ext)s"),
         "quiet": True,
         "restrictfilenames": True,
     }
 
-    # Solo le inyectamos la localización de FFmpeg si estamos en PC local
     if not ES_ANDROID:
         ydl_opts["ffmpeg_location"] = os.path.dirname(executable_ffmpeg)
 
@@ -62,17 +56,20 @@ def api_descargar_video():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
 @app.route('/api/convertir_bytes', methods=['POST'])
 def api_convertir_bytes():
-    # Nota: Este endpoint fallará en el WebView de Android debido a las restricciones 
-    # de <input type="file"> explicadas anteriormente, pero queda reparado y funcional por compatibilidad.
     data = request.json or {}
     nombre_archivo = data.get('nombre', '')
     datos_hex = data.get('hex', '')
 
     if not datos_hex or len(datos_hex) % 2 != 0:
         return jsonify({"status": "error", "message": "Flujo de bytes corrupto."}), 400
+
+    # 🚨 LA CREACIÓN DE CARPETA SE HACE RECIÉN ACÁ
+    try:
+        os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Fallo de permisos de escritura: {e}"}), 500
 
     try:
         nombre_seguro = os.path.basename(nombre_archivo)
@@ -106,7 +103,6 @@ def api_convertir_bytes():
         if 'ruta_temporal_video' in locals() and os.path.exists(ruta_temporal_video):
             os.remove(ruta_temporal_video)
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

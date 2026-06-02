@@ -1,84 +1,71 @@
 # 🐧 main.py (Ubicado en la raíz del proyecto)
 import sys
 import os
-import traceback
 import threading
 import time
-import urllib.request
 import webbrowser
 
-# --- ESCUDO GLOBAL ---
-ERROR_GLOBAL = None
+# 1. Configuración de Rutas base
+ruta_raiz = os.path.dirname(os.path.abspath(__file__))
+ruta_motor_movil = os.path.join(ruta_raiz, 'motor-mobile-android')
+if ruta_motor_movil not in sys.path:
+    sys.path.insert(0, ruta_motor_movil)
 
+ES_ANDROID = 'ANDROID_ARGUMENT' in os.environ
+
+if ES_ANDROID:
+    # Ruta pública legal de Android (No requiere pedir permisos para crear archivos aquí)
+    ruta_descargas = '/storage/emulated/0/Download/Pinguino'
+else:
+    ruta_descargas = os.path.join(ruta_raiz, 'downloads')
+
+os.environ['RUTA_DESCARGAS_PINGUINO'] = ruta_descargas
+
+# 2. Importaciones Híbridas
 try:
-    # 1. Configuración de dependencias base
-    ruta_raiz = os.path.dirname(os.path.abspath(__file__))
-    ruta_motor_movil = os.path.join(ruta_raiz, 'motor-mobile-android')
-    if ruta_motor_movil not in sys.path:
-        sys.path.insert(0, ruta_motor_movil)
-
-    ES_ANDROID = 'ANDROID_ARGUMENT' in os.environ
-
-    # 2. Hilo de Flask (Se mantiene igual)
-    def iniciar_servidor_flask():
-        try:
-            import android_server
-            android_server.app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
-        except Exception as e:
-            print(f"Error interno de Flask: {e}")
-
-    # 3. Importaciones de Kivy y Android
     from kivy.app import App
     from kivy.uix.widget import Widget
-    from kivy.clock import Clock
-    
-    if ES_ANDROID:
-        from android.runnable import run_on_ui_thread
-        from jnius import autoclass
-        # 🚨 LIBRERÍA OFICIAL DE PERMISOS
-        from android.permissions import request_permissions, Permission
-    else:
-        def run_on_ui_thread(func): return func
+    KIVY_DISPONIBLE = True
+except ImportError:
+    KIVY_DISPONIBLE = False
 
-except Exception as e:
-    ERROR_GLOBAL = traceback.format_exc()
+if ES_ANDROID:
+    from jnius import autoclass
+    from android.runnable import run_on_ui_thread
+else:
+    def run_on_ui_thread(func): return func
 
+# 3. El Orquestador de Arranque (Totalmente aislado del hilo gráfico)
+def orquestador_segundo_plano(app_kivy):
+    try:
+        import android_server
+        # Levantamos Flask
+        threading.Thread(
+            target=lambda: android_server.app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False), 
+            daemon=True
+        ).start()
+        
+        # Le damos 2 segundos exactos a Flask para asentar el puerto SIN CONGELAR el celular
+        time.sleep(2.0)
+        
+        # Le ordenamos al celular que inyecte la pantalla
+        if KIVY_DISPONIBLE and ES_ANDROID:
+            app_kivy.lanzar_interfaz()
+        elif not ES_ANDROID:
+            webbrowser.open('http://127.0.0.1:5000')
+    except Exception as e:
+        print(f"Error crítico en el backend: {e}")
 
-# --- DEFINICIÓN DE LA APLICACIÓN ---
-if ERROR_GLOBAL is None:
+# 4. Contenedor de Interfaz
+if KIVY_DISPONIBLE:
     class PinguinoApp(App):
         def build(self):
-            if ES_ANDROID:
-                # 1. PEDIMOS EL PERMISO DE FRENTE AL USUARIO CON UN POPUP
-                request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
-                
-                # 2. Seteamos la ruta oficial de Descargas de Android
-                # (No usamos os.makedirs porque la carpeta Download ya existe siempre por defecto)
-                from android.storage import primary_external_storage_path
-                ruta_descargas = os.path.join(primary_external_storage_path(), 'Download')
-            else:
-                ruta_descargas = os.path.join(ruta_raiz, 'downloads')
-                os.makedirs(ruta_descargas, exist_ok=True)
-            
-            # 3. Le pasamos la ruta segura al backend
-            os.environ['RUTA_DESCARGAS_PINGUINO'] = ruta_descargas
-            
-            Clock.schedule_interval(self.esperar_servidor, 0.5)
+            # Iniciamos la carga de Flask en la sombra mientras Kivy pinta un fondo neutro
+            threading.Thread(target=orquestador_segundo_plano, args=(self,), daemon=True).start()
             return Widget()
-
-        def esperar_servidor(self, dt):
-            try:
-                if urllib.request.urlopen("http://127.0.0.1:5000/").getcode() == 200:
-                    Clock.unschedule(self.esperar_servidor)
-                    self.lanzar_interfaz()
-            except Exception:
-                pass
 
         @run_on_ui_thread
         def lanzar_interfaz(self):
-            if not ES_ANDROID:
-                webbrowser.open('http://127.0.0.1:5000')
-                return
             try:
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 WebView = autoclass('android.webkit.WebView')
@@ -92,31 +79,11 @@ if ERROR_GLOBAL is None:
                 webview.loadUrl('http://127.0.0.1:5000')
                 activity.setContentView(webview)
             except Exception as e:
-                print(f"Error crítico en WebView: {e}")
-
-else:
-    # Pantalla roja de diagnóstico por si algo más falla
-    from kivy.app import App
-    from kivy.uix.label import Label
-    from kivy.core.window import Window
-    
-    class PinguinoApp(App):
-        def build(self):
-            Window.clearcolor = (0.5, 0.1, 0.1, 1)
-            lbl = Label(
-                text=f"CRASH DETECTADO:\n\n{ERROR_GLOBAL}",
-                font_size='11sp',
-                valign='top',
-                halign='left'
-            )
-            lbl.bind(size=lbl.setter('text_size'))
-            return lbl
-
+                print(f"Fallo nativo de Java: {e}")
 
 if __name__ == "__main__":
-    if ERROR_GLOBAL is None:
-        hilo_flask = threading.Thread(target=iniciar_servidor_flask)
-        hilo_flask.daemon = True
-        hilo_flask.start()
-
-    PinguinoApp().run()
+    if KIVY_DISPONIBLE:
+        PinguinoApp().run()
+    else:
+        orquestador_segundo_plano(None)
+        while True: time.sleep(1)
