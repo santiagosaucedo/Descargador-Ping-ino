@@ -7,10 +7,22 @@ from flask import Flask, request, jsonify, send_from_directory
 RUTA_BASE_MOBILE = os.path.dirname(os.path.abspath(__file__))
 RAIZ_PROYECTO = os.path.dirname(RUTA_BASE_MOBILE)
 CARPETA_FRONTEND = os.path.join(RAIZ_PROYECTO, "frontend")
-FFMPEG_PATH = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin")
 
-executable_ffmpeg = os.path.join(FFMPEG_PATH, "ffmpeg.exe")
-RUTA_DESCARGAS_USUARIO = os.path.join(os.path.expanduser("~"), "Downloads")
+# 🐧 DETECCIÓN DE ENTORNO: Ajustamos rutas y ejecutables según sea Android o PC Windows
+ES_ANDROID = 'ANDROID_ARGUMENT' in os.environ
+
+if ES_ANDROID:
+    # En Android usamos las variables inyectadas por el main.py y el FFmpeg nativo del sistema
+    RUTA_DESCARGAS_FINAL = os.environ.get('RUTA_DESCARGAS_PINGUINO', '/sdcard/Download')
+    executable_ffmpeg = "ffmpeg"  # Linux / Android lo lee directo del PATH global si la receta existe
+else:
+    # Mantenemos tus rutas originales para cuando pruebes en tu PC de escritorio
+    FFMPEG_PATH = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin")
+    executable_ffmpeg = os.path.join(FFMPEG_PATH, "ffmpeg.exe")
+    RUTA_DESCARGAS_FINAL = os.path.join(os.path.expanduser("~"), "Downloads")
+
+# Aseguramos que la carpeta de descargas exista
+os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
 
 # Inicializamos Flask apuntando exactamente a la carpeta externa /frontend
 app = Flask(__name__, static_folder=CARPETA_FRONTEND, static_url_path='')
@@ -33,12 +45,15 @@ def api_descargar_video():
 
     from yt_dlp import YoutubeDL
     ydl_opts = {
-        "format": "best[ext=mp4]/best",
-        "ffmpeg_location": FFMPEG_PATH,
-        "outtmpl": os.path.join(RUTA_DESCARGAS_USUARIO, "%(title)s.%(ext)s"),
+        "format": "best[ext=mp4]/best",  # Mantiene tu descarga de video original
+        "outtmpl": os.path.join(RUTA_DESCARGAS_FINAL, "%(title)s.%(ext)s"),
         "quiet": True,
         "restrictfilenames": True,
     }
+
+    # Solo le inyectamos la localización de FFmpeg si estamos en PC local
+    if not ES_ANDROID:
+        ydl_opts["ffmpeg_location"] = os.path.dirname(executable_ffmpeg)
 
     try:
         with YoutubeDL(ydl_opts) as ydl:
@@ -50,6 +65,8 @@ def api_descargar_video():
 
 @app.route('/api/convertir_bytes', methods=['POST'])
 def api_convertir_bytes():
+    # Nota: Este endpoint fallará en el WebView de Android debido a las restricciones 
+    # de <input type="file"> explicadas anteriormente, pero queda reparado y funcional por compatibilidad.
     data = request.json or {}
     nombre_archivo = data.get('nombre', '')
     datos_hex = data.get('hex', '')
@@ -63,8 +80,8 @@ def api_convertir_bytes():
 
         archivo_bytes = binascii.unhexlify(datos_hex)
 
-        ruta_temporal_video = os.path.join(RUTA_DESCARGAS_USUARIO, f"temp_mobile_{nombre_seguro}")
-        ruta_salida_mp3 = os.path.join(RUTA_DESCARGAS_USUARIO, f"{nombre_puro}.mp3")
+        ruta_temporal_video = os.path.join(RUTA_DESCARGAS_FINAL, f"temp_mobile_{nombre_seguro}")
+        ruta_salida_mp3 = os.path.join(RUTA_DESCARGAS_FINAL, f"{nombre_puro}.mp3")
 
         with open(ruta_temporal_video, "wb") as f:
             f.write(archivo_bytes)
@@ -90,6 +107,6 @@ def api_convertir_bytes():
             os.remove(ruta_temporal_video)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 if __name__ == '__main__':
-    # 🚨 CLAVE EN CELULARES: Host en 0.0.0.0 y un puerto alto (como el 5000 o 8080)
     app.run(host='0.0.0.0', port=5000, debug=False)
