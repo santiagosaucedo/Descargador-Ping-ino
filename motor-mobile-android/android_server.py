@@ -8,15 +8,18 @@ RAIZ_PROYECTO = os.path.dirname(RUTA_BASE_MOBILE)
 CARPETA_FRONTEND = os.path.join(RAIZ_PROYECTO, "frontend")
 ES_ANDROID = 'ANDROID_ARGUMENT' in os.environ
 
-if ES_ANDROID:
-    RUTA_DESCARGAS_FINAL = os.environ.get('RUTA_DESCARGAS_PINGUINO', '/storage/emulated/0/Download')
-    executable_ffmpeg = "ffmpeg"
-else:
-    FFMPEG_PATH = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin")
-    executable_ffmpeg = os.path.join(FFMPEG_PATH, "ffmpeg.exe")
-    RUTA_DESCARGAS_FINAL = os.path.join(os.path.expanduser("~"), "Downloads")
-
 app = Flask(__name__, static_folder=CARPETA_FRONTEND, static_url_path='')
+
+def obtener_ruta_descargas():
+    """Calcula la ruta segura dependiendo del sistema operativo."""
+    if ES_ANDROID:
+        # Usamos la carpeta pública de descargas de Android
+        ruta = '/storage/emulated/0/Download'
+    else:
+        ruta = os.path.join(os.path.expanduser("~"), "Downloads")
+    
+    os.makedirs(ruta, exist_ok=True)
+    return ruta
 
 @app.route('/')
 def servir_interfaz():
@@ -30,24 +33,24 @@ def api_descargar_video():
     if not url_video or ("youtube.com" not in url_video and "youtu.be" not in url_video):
         return jsonify({"status": "error", "message": "Enlace inválido."}), 400
 
-    # 🚨 LA CREACIÓN DE CARPETA SE HACE RECIÉN ACÁ
     try:
-        os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
+        ruta_final = obtener_ruta_descargas()
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Fallo de permisos de escritura: {e}"}), 500
+        return jsonify({"status": "error", "message": f"Sin permisos de escritura: {e}"}), 500
 
     url_limpia = url_video.strip().split()[0]
 
     from yt_dlp import YoutubeDL
     ydl_opts = {
         "format": "best[ext=mp4]/best",
-        "outtmpl": os.path.join(RUTA_DESCARGAS_FINAL, "%(title)s.%(ext)s"),
+        "outtmpl": os.path.join(ruta_final, "%(title)s.%(ext)s"),
         "quiet": True,
         "restrictfilenames": True,
     }
 
     if not ES_ANDROID:
-        ydl_opts["ffmpeg_location"] = os.path.dirname(executable_ffmpeg)
+        FFMPEG_PATH = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin", "ffmpeg.exe")
+        ydl_opts["ffmpeg_location"] = os.path.dirname(FFMPEG_PATH)
 
     try:
         with YoutubeDL(ydl_opts) as ydl:
@@ -58,50 +61,42 @@ def api_descargar_video():
 
 @app.route('/api/convertir_bytes', methods=['POST'])
 def api_convertir_bytes():
+    # Mantenemos tu lógica intacta, inyectando la ruta de forma segura
     data = request.json or {}
     nombre_archivo = data.get('nombre', '')
     datos_hex = data.get('hex', '')
 
     if not datos_hex or len(datos_hex) % 2 != 0:
-        return jsonify({"status": "error", "message": "Flujo de bytes corrupto."}), 400
+        return jsonify({"status": "error", "message": "Flujo corrupto."}), 400
 
-    # 🚨 LA CREACIÓN DE CARPETA SE HACE RECIÉN ACÁ
     try:
-        os.makedirs(RUTA_DESCARGAS_FINAL, exist_ok=True)
+        ruta_final = obtener_ruta_descargas()
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Fallo de permisos de escritura: {e}"}), 500
+        return jsonify({"status": "error", "message": f"Sin permisos de escritura: {e}"}), 500
 
     try:
         nombre_seguro = os.path.basename(nombre_archivo)
         nombre_puro = os.path.splitext(nombre_seguro)[0]
-
         archivo_bytes = binascii.unhexlify(datos_hex)
 
-        ruta_temporal_video = os.path.join(RUTA_DESCARGAS_FINAL, f"temp_mobile_{nombre_seguro}")
-        ruta_salida_mp3 = os.path.join(RUTA_DESCARGAS_FINAL, f"{nombre_puro}.mp3")
+        ruta_temporal = os.path.join(ruta_final, f"temp_{nombre_seguro}")
+        ruta_salida_mp3 = os.path.join(ruta_final, f"{nombre_puro}.mp3")
 
-        with open(ruta_temporal_video, "wb") as f:
+        with open(ruta_temporal, "wb") as f:
             f.write(archivo_bytes)
 
-        comando = [
-            executable_ffmpeg,
-            "-i", ruta_temporal_video,
-            "-vn",
-            "-q:a", "0",
-            "-y",
-            ruta_salida_mp3
-        ]
+        if ES_ANDROID:
+            executable_ffmpeg = "ffmpeg"
+        else:
+            executable_ffmpeg = os.path.join(RAIZ_PROYECTO, "motor-desktop-pc", "bin", "ffmpeg.exe")
 
+        comando = [executable_ffmpeg, "-i", ruta_temporal, "-vn", "-q:a", "0", "-y", ruta_salida_mp3]
         subprocess.run(comando, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if os.path.exists(ruta_temporal_video):
-            os.remove(ruta_temporal_video)
-
+        if os.path.exists(ruta_temporal): os.remove(ruta_temporal)
         return jsonify({"status": "ok"})
 
     except Exception as e:
-        if 'ruta_temporal_video' in locals() and os.path.exists(ruta_temporal_video):
-            os.remove(ruta_temporal_video)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
