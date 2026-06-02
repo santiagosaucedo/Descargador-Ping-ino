@@ -21,11 +21,12 @@ source.include_patterns = motor-mobile-android/*, frontend/*
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Application requirements
-requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,openssl,libffi
+# (list) Application requirements (Agregamos kivy y pyjnius para el puente nativo)
+requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,openssl,libffi,kivy,pyjnius
 
-# 🚨 CAMBIO CLAVE: Cambiamos el bootstrap para que use el navegador nativo de Android
-p4a.bootstrap = webview
+
+# 🚨 REVERTIMOS EL BOOTSTRAP: Volvemos al motor estándar que nos da control total
+p4a.bootstrap = sdl2
 
 # (str) Ícono para el celular
 icon.filename = frontend/android-chrome-512x512.png
