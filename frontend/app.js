@@ -251,12 +251,11 @@ function ejecutarAccionDescarga() {
         botonProcesarEstado = 'descargando';
         renderizarInterfaz();
 
-        // 🔀 PUENTE HÍBRIDO NATIVO
-        if (window.eel) {
-            // Entorno de Escritorio (PC)
+        // 🐧 Validamos si Eel está activo REALMENTE (comprobando sus funciones expuestas de PC)
+        if (window.eel && typeof window.eel.backend_descargar_video === 'function') {
             eel.backend_descargar_video(urlTexto)(procesarResultadoDescarga);
         } else {
-            // Entorno Móvil (Celular)
+            // Android entra directo por acá usando la API REST local
             fetch('/api/descargar_video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -264,7 +263,10 @@ function ejecutarAccionDescarga() {
             })
             .then(res => res.json())
             .then(procesarResultadoDescarga)
-            .catch(() => procesarResultadoDescarga({ status: "error" }));
+            .catch(() => {
+                console.error("Error en fetch de descarga");
+                procesarResultadoDescarga({ status: "error" });
+            });
         }
     }
 }
@@ -294,12 +296,10 @@ function ejecutarAccionConversionLocal() {
             hexString += bytes[i].toString(16).padStart(2, '0');
         }
 
-        // 🔀 PUENTE HÍBRIDO NATIVO
-        if (window.eel) {
-            // Entorno de Escritorio (PC)
+        // Validamos puente real de escritorio
+        if (window.eel && typeof window.eel.backend_convertir_bytes_a_mp3 === 'function') {
             eel.backend_convertir_bytes_a_mp3(archivoReal.name, hexString)(procesarResultadoConversion);
         } else {
-            // Entorno Móvil (Celular)
             fetch('/api/convertir_bytes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

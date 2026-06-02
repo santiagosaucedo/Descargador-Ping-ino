@@ -21,8 +21,8 @@ source.include_patterns = motor-mobile-android/*, frontend/*
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Application requirements (Dejamos solo lo esencial para tu backend)
-requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp
+# (list) Application requirements
+requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,openssl,libffi
 
 # 🚨 CAMBIO CLAVE: Cambiamos el bootstrap para que use el navegador nativo de Android
 p4a.bootstrap = webview
@@ -31,7 +31,7 @@ p4a.bootstrap = webview
 icon.filename = frontend/android-chrome-512x512.png
 
 # (list) Permisos de Android necesarios
-android.permissions = INTERNET
+android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 
 # (int) Target Android API (Versión de Android 13 estable)
 android.api = 33
