@@ -10,14 +10,11 @@ body {
 }
 
 .app-container {
-    position: absolute; /* Cambiado a absoluto para el control de escala */
+    position: relative; /* Volvemos a relative */
     width: 830px;
     height: 500px;
-    /* 🐧 Forzamos el reescalado simétrico desde el punto cero */
-    transform: translate(-50%, -50%) scale(min(calc(100vw / 850), calc(100vh / 520)));
-    left: 50%;
-    top: 50%;
-    transform-origin: center center;
+    /* Dejamos que Flexbox lo centre, solo le aplicamos la escala dinámica */
+    transform: scale(min(calc(100vw / 850), calc(100vh / 520)));
 }
 
 canvas {

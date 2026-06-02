@@ -48,6 +48,9 @@ orientation = landscape
 # (bool) Pantalla completa sin barras de estado
 fullscreen = 1
 
+# (bool) Permitir tráfico HTTP sin cifrar (Clave para que Android 9+ lea el localhost)
+android.manifest.application_attributes = android:usesCleartextTraffic="true"
+
 # (list) Arquitectura estándar moderna
 android.archs = arm64-v8a
 
