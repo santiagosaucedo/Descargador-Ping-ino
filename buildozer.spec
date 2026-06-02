@@ -21,11 +21,10 @@ source.include_patterns = motor-mobile-android/*, frontend/*
 # (str) Versión de tu aplicación
 version = 1.0
 
-# (list) Application requirements (Agregamos kivy y pyjnius para el puente nativo)
-requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,openssl,libffi,kivy,pyjnius
+# (list) Application requirements
+requirements = python3==3.11.11,hostpython3==3.11.11,flask,yt-dlp,openssl,libffi,sqlite3,kivy,pyjnius
 
-
-# 🚨 REVERTIMOS EL BOOTSTRAP: Volvemos al motor estándar que nos da control total
+# 🚨 El bootstrap TIENE que ser sdl2 para poder usar el decorador @run_on_ui_thread
 p4a.bootstrap = sdl2
 
 # (str) Ícono para el celular

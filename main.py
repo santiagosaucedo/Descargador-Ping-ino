@@ -2,70 +2,75 @@
 import sys
 import os
 import threading
-import time
 
-# 1. Configurar rutas para encontrar el backend
+# 1. Inyectamos la ruta de tu backend móvil
 ruta_raiz = os.path.dirname(os.path.abspath(__file__))
 ruta_motor_movil = os.path.join(ruta_raiz, 'motor-mobile-android')
 if ruta_motor_movil not in sys.path:
     sys.path.insert(0, ruta_motor_movil)
 
-# 2. CONFIGURACIÓN DE RUTAS DE ALMACENAMIENTO
-if 'ANDROID_ARGUMENT' in os.environ:
-    from android.storage import app_storage_dir
-    ruta_descargas = os.environ.get('RUTA_DESCARGAS_PINGUINO', '/sdcard/Download')
-else:
+# 2. Configuración segura de almacenamiento
+try:
+    from android.storage import primary_external_storage_path
+    ruta_descargas = os.path.join(primary_external_storage_path(), 'Download')
+except ImportError:
     ruta_descargas = os.path.join(ruta_raiz, 'downloads')
 
 os.makedirs(ruta_descargas, exist_ok=True)
 os.environ['RUTA_DESCARGAS_PINGUINO'] = ruta_descargas
 
-# 3. Lanzamos Flask en un hilo independiente para no congelar la pantalla de Android
+# 3. Lanzamos Flask en un hilo Daemon (en la sombra)
 def iniciar_servidor_flask():
     try:
         import android_server
     except Exception as e:
-        print(f"Error al levantar Flask: {e}")
+        print(f"Error interno de Flask: {e}")
 
 hilo_flask = threading.Thread(target=iniciar_servidor_flask)
 hilo_flask.daemon = True
 hilo_flask.start()
 
-# 4. LEVANTAMOS LA INTERFAZ COMPATIBLE CON SDL2
+# 4. LA INTERFAZ NATIVA (ACÁ ESTÁ LA MAGIA QUE EVITA EL CRASHEO)
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
 
+# Importamos el delegado del Hilo Principal de Android
+try:
+    from android.runnable import run_on_ui_thread
+    from jnius import autoclass
+except ImportError:
+    # Fallback por si corrés el código en Windows para testear
+    def run_on_ui_thread(func):
+        return func
+
 class PinguinoApp(App):
     def build(self):
-        # Esperamos 1 segundo a que Flask se asiente y disparamos el WebView
-        Clock.schedule_once(self.abrir_webview, 1.0)
-        return Widget() # Retorna un contenedor limpio
+        # Le damos a Flask 1.5 segundos para que asiente el servidor local antes de abrir la pantalla
+        Clock.schedule_once(self.lanzar_webview_seguro, 1.5)
+        return Widget()
 
-    def abrir_webview(self, dt):
-        # Levantamos el navegador nativo mediante Pyjnius (Java Bridge)
+    # 🚨 ESTA ETIQUETA ES LA QUE SALVA LA APP DEL CIERRE: Obliga a Java a correrlo en su UI Thread
+    @run_on_ui_thread
+    def lanzar_webview_seguro(self, dt=None):
         try:
-            from jnius import autoclass
-            from android.runnable import Runnable
-
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             WebView = autoclass('android.webkit.WebView')
             WebViewClient = autoclass('android.webkit.WebViewClient')
 
-            class CrearWebView(Runnable):
-                def run(self):
-                    activity = PythonActivity.mActivity
-                    webview = WebView(activity)
-                    webview.getSettings().setJavaScriptEnabled(True)
-                    # Forzamos a que maneje las alertas y la escala de forma nativa
-                    webview.setWebViewClient(WebViewClient())
-                    # Apuntamos a tu Flask local
-                    webview.loadUrl('http://127.0.0.1:5000')
-                    activity.setContentView(webview)
-
-            CrearWebView()()
+            activity = PythonActivity.mActivity
+            webview = WebView(activity)
+            
+            # Habilitamos JS y el almacenamiento DOM (Clave para que ande el "fetch" moderno en Android)
+            webview.getSettings().setJavaScriptEnabled(True)
+            webview.getSettings().setDomStorageEnabled(True) 
+            webview.setWebViewClient(WebViewClient())
+            
+            # Cargamos el motor de Flask
+            webview.loadUrl('http://127.0.0.1:5000')
+            activity.setContentView(webview)
         except Exception as e:
-            print(f"Fallo al inyectar WebView de Java: {e}")
+            print(f"Fallo al inyectar WebView: {e}")
 
 if __name__ == "__main__":
     PinguinoApp().run()
